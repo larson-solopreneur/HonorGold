@@ -66,32 +66,39 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Configure local strategy
+  // Configure local strategy with email field
   passport.use(
-    new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
-      try {
-        // Find user
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, email))
-          .limit(1);
+    new LocalStrategy(
+      { usernameField: "email" },
+      async (email, password, done) => {
+        try {
+          // Find user by email
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
 
-        if (!user) {
-          return done(null, false, { message: "メールアドレスまたはパスワードが正しくありません。" });
+          if (!user) {
+            return done(null, false, {
+              message: "メールアドレスまたはパスワードが正しくありません。",
+            });
+          }
+
+          // Verify password
+          const isMatch = await crypto.compare(password, user.password);
+          if (!isMatch) {
+            return done(null, false, {
+              message: "メールアドレスまたはパスワードが正しくありません。",
+            });
+          }
+
+          return done(null, user);
+        } catch (err) {
+          return done(err);
         }
-
-        // Verify password
-        const isMatch = await crypto.compare(password, user.password);
-        if (!isMatch) {
-          return done(null, false, { message: "メールアドレスまたはパスワードが正しくありません。" });
-        }
-
-        return done(null, user);
-      } catch (err) {
-        return done(err);
       }
-    })
+    )
   );
 
   // Session serialization
@@ -120,7 +127,7 @@ export function setupAuth(app: Express) {
       if (!result.success) {
         return res
           .status(400)
-          .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+          .send(result.error.issues.map((i) => i.message).join(", "));
       }
 
       const { email, password } = result.data;
@@ -152,7 +159,7 @@ export function setupAuth(app: Express) {
           return next(err);
         }
         return res.json({
-          message: "Registration successful",
+          message: "登録が完了しました。",
           user: { id: newUser.id, email: newUser.email },
         });
       });
@@ -166,7 +173,7 @@ export function setupAuth(app: Express) {
     if (!result.success) {
       return res
         .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+        .send(result.error.issues.map((i) => i.message).join(", "));
     }
 
     passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
@@ -175,7 +182,7 @@ export function setupAuth(app: Express) {
       }
 
       if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
+        return res.status(400).send(info.message ?? "ログインに失敗しました。");
       }
 
       req.logIn(user, (err) => {
@@ -184,7 +191,7 @@ export function setupAuth(app: Express) {
         }
 
         return res.json({
-          message: "Login successful",
+          message: "ログインしました。",
           user: { id: user.id, email: user.email },
         });
       });
@@ -194,9 +201,9 @@ export function setupAuth(app: Express) {
   app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
-        return res.status(500).send("Logout failed");
+        return res.status(500).send("ログアウトに失敗しました。");
       }
-      res.json({ message: "Logout successful" });
+      res.json({ message: "ログアウトしました。" });
     });
   });
 
@@ -204,7 +211,7 @@ export function setupAuth(app: Express) {
     if (req.isAuthenticated()) {
       return res.json(req.user);
     }
-    res.status(401).send("Not authenticated");
+    res.status(401).send("認証されていません。");
   });
 
   // Middleware for protected routes
@@ -212,6 +219,6 @@ export function setupAuth(app: Express) {
     if (req.isAuthenticated()) {
       return next();
     }
-    res.status(401).send("Not authenticated");
+    res.status(401).send("認証されていません。");
   });
 }
