@@ -7,18 +7,51 @@ import { useState, useEffect } from "react";
 export function Timer() {
   const { startTimer } = useTimer();
   const { toast } = useToast();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    let intervalId: NodeJS.Timeout;
 
-    return () => clearInterval(timer);
-  }, []);
+    if (isRunning && startTime) {
+      intervalId = setInterval(() => {
+        const now = new Date();
+        const elapsed = now.getTime() - startTime.getTime();
+        setElapsedTime(elapsed);
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isRunning, startTime]);
+
+  const formatElapsedTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${days}日 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
 
   const handleTimerStart = async (isAbstinence: boolean) => {
     try {
+      if (isAbstinence) {
+        const now = new Date();
+        setStartTime(now);
+        setIsRunning(true);
+        setElapsedTime(0);
+      } else {
+        setStartTime(null);
+        setIsRunning(false);
+        setElapsedTime(0);
+      }
+
       await startTimer(isAbstinence);
       toast({
         title: isAbstinence ? "継続モード開始" : "失敗を記録",
@@ -40,8 +73,8 @@ export function Timer() {
           <Clock className="h-6 w-6" />
           タイマー管理
         </h2>
-        <p className="text-4xl font-mono">
-          {currentTime.toLocaleTimeString('ja-JP')}
+        <p className="text-4xl font-mono mb-2">
+          {formatElapsedTime(elapsedTime)}
         </p>
       </div>
 
@@ -50,6 +83,7 @@ export function Timer() {
           size="lg"
           className="h-24"
           onClick={() => handleTimerStart(true)}
+          disabled={isRunning}
         >
           <ShieldCheck className="h-6 w-6 mr-2" />
           継続を開始
