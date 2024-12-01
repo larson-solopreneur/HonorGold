@@ -111,5 +111,82 @@ npm run dev
 ## ライセンス
 MIT
 
+## トラブルシューティング
+
+### データベース接続エラー
+**エラー内容**:
+```
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+```
+**解決方法**:
+1. .envファイルが正しく配置されているか確認
+2. DATABASE_URLの形式を確認:
+   ```
+   DATABASE_URL=postgresql://username:password@localhost:5432/honorgold
+   ```
+3. PostgreSQLサービスが起動しているか確認
+
+### 環境変数読み込みエラー
+**エラー内容**:
+```
+Error: Cannot find module 'dotenv'
+```
+**解決方法**:
+1. dotenvパッケージのインストール:
+   ```bash
+   npm install dotenv
+   ```
+2. server/index.tsの先頭に以下を追加:
+   ```typescript
+   import 'dotenv/config';
+   ```
+
+### データベースマイグレーションエラー
+**エラー内容**:
+```
+Error: connect ECONNREFUSED ::1:5432
+```
+**解決方法**:
+1. PostgreSQLサービスの起動確認
+2. データベースの作成:
+   ```sql
+   CREATE DATABASE honorgold;
+   ```
+3. マイグレーションの実行:
+   ```bash
+   npm run db:push
+   ```
+
+### ポート競合エラー
+**エラー内容**:
+```
+Error: listen EADDRINUSE: address already in use :::5000
+```
+**解決方法**:
+1. 使用中のポートを確認:
+   ```bash
+   lsof -i :5000
+   ```
+2. 競合するプロセスの終了
+3. 別のポートを使用（環境変数PORTで設定可能）
+
+### Node.jsバージョン互換性エラー
+**エラー内容**:
+```
+Error: The engine "node" is incompatible with this module
+```
+**解決方法**:
+1. Node.jsバージョンの確認:
+   ```bash
+   node --version
+   ```
+2. Node.js 20.xへのアップグレード:
+   ```bash
+   nvm install 20
+   nvm use 20
+   ```
+
+注意: これらの解決方法を試しても問題が解決しない場合は、issueを作成してください。
+
 ## コントリビューション
 プルリクエストは大歓迎です。大きな変更を加える場合は、まずissueを作成して変更内容を議論してください。
