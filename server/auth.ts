@@ -43,11 +43,15 @@ export function setupAuth(app: Express) {
     secret: process.env.REPL_ID || "honor-gold-secret",
     resave: false,
     saveUninitialized: false,
+    name: "honor_gold_session",
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true,
+      sameSite: "lax",
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // Prune expired entries every 24h
+      stale: false,
     }),
   };
 
@@ -79,15 +83,7 @@ export function setupAuth(app: Express) {
             .where(eq(users.email, email))
             .limit(1);
 
-          if (!user) {
-            return done(null, false, {
-              message: "メールアドレスまたはパスワードが正しくありません。",
-            });
-          }
-
-          // Verify password
-          const isMatch = await crypto.compare(password, user.password);
-          if (!isMatch) {
+          if (!user || !(await crypto.compare(password, user.password))) {
             return done(null, false, {
               message: "メールアドレスまたはパスワードが正しくありません。",
             });

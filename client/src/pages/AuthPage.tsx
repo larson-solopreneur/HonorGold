@@ -30,25 +30,32 @@ export default function AuthPage() {
 
   const onSubmit = async (data: InsertUser) => {
     try {
+      form.clearErrors();
       const result = await (isLogin ? login(data) : register(data));
       if (!result.ok) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: result.message,
-        });
+        if (result.message.includes("password")) {
+          form.setError("password", { message: result.message });
+        } else if (result.message.includes("email")) {
+          form.setError("email", { message: result.message });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "エラー",
+            description: result.message,
+          });
+        }
         return;
       }
       
       toast({
-        title: "Success",
-        description: isLogin ? "Welcome back!" : "Account created successfully!",
+        title: "成功",
+        description: isLogin ? "ログインしました！" : "アカウントが作成されました！",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: "エラー",
+        description: "予期せぬエラーが発生しました",
       });
     }
   };
@@ -93,8 +100,19 @@ export default function AuthPage() {
               )}
             />
 
-            <Button type="submit" className="w-full">
-              {isLogin ? "Sign In" : "Sign Up"}
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  処理中...
+                </span>
+              ) : (
+                isLogin ? "ログイン" : "新規登録"
+              )}
             </Button>
           </form>
         </Form>
