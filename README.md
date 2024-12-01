@@ -64,6 +64,7 @@ npm run db:push
 ```bash
 npm run dev
 ```
+デフォルトでポート5012で起動します。
 
 ## API エンドポイント
 
@@ -157,12 +158,12 @@ Error: connect ECONNREFUSED ::1:5432
 ### ポート競合エラー
 **エラー内容**:
 ```
-Error: listen EADDRINUSE: address already in use :::5000
+Error: listen EADDRINUSE: address already in use :::5012
 ```
 **解決方法**:
 1. 使用中のポートを確認:
    ```bash
-   lsof -i :5000
+   lsof -i :5012
    ```
 2. 競合するプロセスの終了
 3. 別のポートを使用（環境変数PORTで設定可能）
