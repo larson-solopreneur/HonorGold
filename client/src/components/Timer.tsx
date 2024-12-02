@@ -5,21 +5,46 @@ import { Clock, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export function Timer() {
-  const { startTimer } = useTimer();
+  const { startTimer, endTimer, activeSession } = useTimer();
   const { toast } = useToast();
-  const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
+    
+    if (activeSession?.startTime && !activeSession.endTime) {
+      try {
+        const startTime = new Date(activeSession.startTime);
+        const updateElapsedTime = () => {
+          const now = new Date();
+          const elapsed = now.getTime() - startTime.getTime();
+          setElapsedTime(Math.max(0, elapsed));
+          
+          // ローカルストレージに現在の経過時間を保存
+          localStorage.setItem('timerElapsedTime', elapsed.toString());
+        };
+        
+        // ローカルストレージから以前の状態を復元
+        const storedElapsedTime = localStorage.getItem('timerElapsedTime');
+        if (storedElapsedTime) {
+          setElapsedTime(parseInt(storedElapsedTime, 10));
+        }
 
-    if (isRunning && startTime) {
-      intervalId = setInterval(() => {
-        const now = new Date();
-        const elapsed = now.getTime() - startTime.getTime();
-        setElapsedTime(elapsed);
-      }, 1000);
+        updateElapsedTime();
+        intervalId = setInterval(updateElapsedTime, 1000);
+
+        // タイマー状態をローカルストレージに保存
+        localStorage.setItem('timerStartTime', startTime.toISOString());
+        localStorage.setItem('timerSessionId', activeSession.id.toString());
+        localStorage.setItem('timerIsAbstinence', String(activeSession.isAbstinence));
+      } catch (error) {
+        console.error("タイマー更新エラー:", error);
+        setElapsedTime(0);
+        clearTimerStorage();
+      }
+    } else {
+      setElapsedTime(0);
+      clearTimerStorage();
     }
 
     return () => {
@@ -27,7 +52,15 @@ export function Timer() {
         clearInterval(intervalId);
       }
     };
-  }, [isRunning, startTime]);
+  }, [activeSession]);
+
+  // タイマーストレージをクリアする関数
+  const clearTimerStorage = () => {
+    localStorage.removeItem('timerStartTime');
+    localStorage.removeItem('timerSessionId');
+    localStorage.removeItem('timerIsAbstinence');
+    localStorage.removeItem('timerElapsedTime');
+  };
 
   const formatElapsedTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -39,23 +72,12 @@ export function Timer() {
     return `${days}日 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
-  const handleTimerStart = async (isAbstinence: boolean) => {
+  const handleStart = async () => {
     try {
-      if (isAbstinence) {
-        const now = new Date();
-        setStartTime(now);
-        setIsRunning(true);
-        setElapsedTime(0);
-      } else {
-        setStartTime(null);
-        setIsRunning(false);
-        setElapsedTime(0);
-      }
-
-      await startTimer(isAbstinence);
+      await startTimer(true);
       toast({
-        title: isAbstinence ? "継続モード開始" : "失敗を記録",
-        description: isAbstinence ? "タイマーを開始しました。頑張りましょう！" : "記録を保存しました。また頑張りましょう。",
+        title: "継続モード開始",
+        description: "タイマーを開始しました。頑張りましょう！",
       });
     } catch (error) {
       toast({
@@ -65,6 +87,27 @@ export function Timer() {
       });
     }
   };
+
+  const handleFailure = async () => {
+    try {
+      if (activeSession && !activeSession.endTime) {
+        await endTimer();
+      }
+      await startTimer(false);
+      toast({
+        title: "失敗を記録",
+        description: "記録を保存しました。また頑張りましょう。",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "失敗の記録に失敗しました",
+      });
+    }
+  };
+
+  const isTimerActive = Boolean(activeSession?.startTime && !activeSession?.endTime);
 
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm">
@@ -82,8 +125,8 @@ export function Timer() {
         <Button
           size="lg"
           className="h-24"
-          onClick={() => handleTimerStart(true)}
-          disabled={isRunning}
+          onClick={handleStart}
+          disabled={isTimerActive}
         >
           <ShieldCheck className="h-6 w-6 mr-2" />
           継続を開始
@@ -93,7 +136,7 @@ export function Timer() {
           size="lg"
           variant="destructive"
           className="h-24"
-          onClick={() => handleTimerStart(false)}
+          onClick={handleFailure}
         >
           <AlertTriangle className="h-6 w-6 mr-2" />
           失敗を記録

@@ -40,18 +40,23 @@ export function setupAuth(app: Express) {
   // Setup session store
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "honor-gold-secret",
+    secret: process.env.SESSION_SECRET || "honor-gold-secret",
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     name: "honor_gold_session",
+    proxy: true,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
+      secure: true,
+      path: '/',
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // Prune expired entries every 24h
       stale: false,
+      ttl: 7 * 24 * 60 * 60 * 1000 // 7 days
     }),
   };
 
@@ -59,9 +64,11 @@ export function setupAuth(app: Express) {
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
     sessionSettings.cookie = {
-      ...sessionSettings.cookie,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
       secure: true,
       sameSite: "lax",
+      path: '/',
     };
   }
 
