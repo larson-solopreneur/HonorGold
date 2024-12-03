@@ -4,6 +4,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
+import cors from "cors";
 
 function log(message: string) {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -17,6 +18,10 @@ function log(message: string) {
 }
 
 const app = express();
+app.use(cors({
+  origin: ["http://localhost:3000", "http://localhost:5012", "https://*.repl.co"],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -72,7 +77,7 @@ app.use((req, res, next) => {
   }
 
   // Get port from environment variable or use default
-  const PORT = parseInt(process.env.PORT || "3000", 10);
+  const PORT = parseInt(process.env.PORT || "5012", 10);
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });

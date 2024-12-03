@@ -39,8 +39,10 @@ export function useTimer() {
     queryKey: ["active-timer"],
     queryFn: async () => {
       try {
-        // ローカルストレージからセッションIDを取得
+        // ローカルストレージから保存された状態を取得
         const storedSessionId = localStorage.getItem('timerSessionId');
+        const storedStartTime = localStorage.getItem('timerStartTime');
+        const storedIsAbstinence = localStorage.getItem('timerIsAbstinence');
         
         const response = await fetch("/api/timer/active", {
           credentials: "include",
@@ -60,15 +62,29 @@ export function useTimer() {
         
         const data = await response.json();
         
-        // アクティブセッションがない場合、ローカルストレージをクリア
-        if (!data && storedSessionId) {
-          localStorage.removeItem('timerStartTime');
-          localStorage.removeItem('timerSessionId');
-          localStorage.removeItem('timerIsAbstinence');
-          localStorage.removeItem('timerElapsedTime');
+        // サーバーからのデータとローカルストレージの整合性を確認
+        if (data) {
+          // サーバーのセッションとローカルストレージの情報を同期
+          if (storedSessionId === data.id.toString()) {
+            const serverStartTime = new Date(data.startTime);
+            const localStartTime = storedStartTime ? new Date(storedStartTime) : null;
+            
+            // ローカルの開始時刻が有効な場合はそれを使用
+            if (localStartTime && localStartTime <= serverStartTime) {
+              data.startTime = localStartTime.toISOString();
+            }
+          }
+          return data;
+        } else {
+          // アクティブセッションがない場合、ローカルストレージをクリア
+          if (storedSessionId) {
+            localStorage.removeItem('timerStartTime');
+            localStorage.removeItem('timerSessionId');
+            localStorage.removeItem('timerIsAbstinence');
+            localStorage.removeItem('timerElapsedTime');
+          }
+          return null;
         }
-        
-        return data;
       } catch (error) {
         console.error("タイマー取得エラー:", error);
         return null;

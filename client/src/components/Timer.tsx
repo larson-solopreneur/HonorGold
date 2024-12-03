@@ -12,31 +12,49 @@ export function Timer() {
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
+    // アプリケーション起動時にローカルストレージから状態を復元
+    const initializeFromStorage = () => {
+      try {
+        const storedStartTime = localStorage.getItem('timerStartTime');
+        const storedSessionId = localStorage.getItem('timerSessionId');
+        const storedIsAbstinence = localStorage.getItem('timerIsAbstinence');
+        const storedElapsedTime = localStorage.getItem('timerElapsedTime');
+
+        // ローカルストレージに保存された状態があり、かつアクティブセッションがある場合
+        if (storedStartTime && storedSessionId && activeSession?.id.toString() === storedSessionId) {
+          const startTime = new Date(storedStartTime);
+          if (storedElapsedTime) {
+            setElapsedTime(parseInt(storedElapsedTime, 10));
+          }
+          return startTime;
+        }
+      } catch (error) {
+        console.error("状態復元エラー:", error);
+        clearTimerStorage();
+      }
+      return null;
+    };
+
     if (activeSession?.startTime && !activeSession.endTime) {
       try {
-        const startTime = new Date(activeSession.startTime);
+        const storedStartTime = initializeFromStorage();
+        const startTime = storedStartTime || new Date(activeSession.startTime);
+
         const updateElapsedTime = () => {
           const now = new Date();
           const elapsed = now.getTime() - startTime.getTime();
           setElapsedTime(Math.max(0, elapsed));
           
-          // ローカルストレージに現在の経過時間を保存
+          // 状態をローカルストレージに保存
           localStorage.setItem('timerElapsedTime', elapsed.toString());
+          localStorage.setItem('timerStartTime', startTime.toISOString());
+          localStorage.setItem('timerSessionId', activeSession.id.toString());
+          localStorage.setItem('timerIsAbstinence', String(activeSession.isAbstinence));
         };
-        
-        // ローカルストレージから以前の状態を復元
-        const storedElapsedTime = localStorage.getItem('timerElapsedTime');
-        if (storedElapsedTime) {
-          setElapsedTime(parseInt(storedElapsedTime, 10));
-        }
 
         updateElapsedTime();
         intervalId = setInterval(updateElapsedTime, 1000);
 
-        // タイマー状態をローカルストレージに保存
-        localStorage.setItem('timerStartTime', startTime.toISOString());
-        localStorage.setItem('timerSessionId', activeSession.id.toString());
-        localStorage.setItem('timerIsAbstinence', String(activeSession.isAbstinence));
       } catch (error) {
         console.error("タイマー更新エラー:", error);
         setElapsedTime(0);
@@ -92,12 +110,11 @@ export function Timer() {
     try {
       if (activeSession && !activeSession.endTime) {
         await endTimer();
+        toast({
+          title: "失敗を記録",
+          description: "記録を保存しました。また頑張りましょう。",
+        });
       }
-      await startTimer(false);
-      toast({
-        title: "失敗を記録",
-        description: "記録を保存しました。また頑張りましょう。",
-      });
     } catch (error) {
       toast({
         variant: "destructive",
