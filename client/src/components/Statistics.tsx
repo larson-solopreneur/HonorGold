@@ -167,20 +167,22 @@ export function Statistics() {
         </CardDescription>
         <div className="flex justify-center pt-2">
           <ToggleGroup type="single" value={chartType} onValueChange={(value: ChartType) => value && setChartType(value)}>
-            <ToggleGroupItem value="bar" aria-label="棒グラフ表示">
+            <ToggleGroupItem value="bar" aria-label="棒グラフ表示" title="棒グラフで表示">
               <BarChart2 className="h-4 w-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="line" aria-label="折れ線グラフ表示">
+            <ToggleGroupItem value="line" aria-label="折れ線グラフ表示" title="折れ線グラフで表示">
               <LineChartIcon className="h-4 w-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="calendar" aria-label="カレンダー表示">
+            <ToggleGroupItem value="calendar" aria-label="カレンダー表示" title="カレンダーで表示">
               <CalendarIcon className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
       </CardHeader>
-      <CardContent>
-        {renderChart()}
+      <CardContent className="h-[calc(100%-140px)]">
+        <div className="h-full">
+          {renderChart()}
+        </div>
       </CardContent>
     </Card>
   );
