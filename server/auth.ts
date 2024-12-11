@@ -152,6 +152,7 @@ export function setupAuth(app: Express) {
         .insert(users)
         .values({
           email,
+          username: result.data.username,
           password: hashedPassword,
         })
         .returning();
