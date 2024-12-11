@@ -23,12 +23,7 @@ export default function HomePage() {
           <Statistics />
         )}
         
-        {view === "settings" && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Settings</h2>
-            {/* Settings content here */}
-          </div>
-        )}
+        {view === "settings" && <Settings />}
       </main>
     </div>
   );

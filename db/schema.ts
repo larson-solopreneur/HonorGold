@@ -6,6 +6,7 @@ export const users = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   email: text("email").unique().notNull(),
   username: text("username").notNull(),
+  targetDays: integer("target_days"),
   password: text("password").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
