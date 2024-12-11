@@ -5,6 +5,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   email: text("email").unique().notNull(),
+  username: text("username").notNull(),
   password: text("password").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -21,6 +22,11 @@ export const timerSessions = pgTable("timer_sessions", {
 export const insertUserSchema = createInsertSchema(users).extend({
   email: z.string().email({
     message: "メールアドレスの形式が正しくありません。",
+  }),
+  username: z.string().min(2, {
+    message: "ユーザー名は2文字以上である必要があります。",
+  }).max(30, {
+    message: "ユーザー名は30文字以下である必要があります。",
   }),
   password: z.string().min(8, {
     message: "パスワードは8文字以上である必要があります。",
