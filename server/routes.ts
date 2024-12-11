@@ -3,6 +3,9 @@ import { setupAuth } from "./auth";
 import { db } from "../db";
 import { timerSessions } from "@db/schema";
 import { eq, and, isNull, desc } from "drizzle-orm";
+// Assuming 'users' table exists and has 'id', 'username', and 'targetDays' columns.  Add import if necessary.
+import { users } from "../db/schema"; // Add this import if users schema is not already imported
+
 
 export function registerRoutes(app: Express) {
   setupAuth(app);
@@ -104,6 +107,29 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       console.error("アクティブセッション取得エラー:", req.user.id, error);
       res.status(500).send("アクティブなタイマーの取得に失敗しました");
+    }
+  });
+
+  app.post("/api/logout", async (req, res) => {
+    res.json({ ok: true });
+  });
+
+  app.put("/api/users/settings", async (req, res) => {
+    const { username, targetDays } = req.body;
+    const userId = req.session?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "認証が必要です" });
+    }
+
+    try {
+      await db.update(users)
+        .set({ username, targetDays })
+        .where(eq(users.id, userId));
+      
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(500).json({ message: "設定の更新に失敗しました" });
     }
   });
 }

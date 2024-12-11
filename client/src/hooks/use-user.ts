@@ -87,12 +87,35 @@ export function useUser() {
     },
   });
 
+  const updateUser = async (data: { username: string; targetDays: number }) => {
+    try {
+      const response = await fetch("/api/users/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { ok: false, message: error.message };
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["user"] });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: "設定の更新に失敗しました" };
+    }
+  };
+
   return {
     user,
-    isLoading,
-    error,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    updateUser,
+    isLoading: isLoading || false, //Assuming isRegistering is not defined.  Defaulting to false.
   };
 }
