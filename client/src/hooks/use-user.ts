@@ -110,12 +110,32 @@ export function useUser() {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      const response = await fetch("/api/users/delete", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { ok: false, message: error.message };
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["user"] });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: "アカウントの削除に失敗しました" };
+    }
+  };
+
   return {
     user,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     updateUser,
-    isLoading: isLoading || false, //Assuming isRegistering is not defined.  Defaulting to false.
+    deleteAccount,
+    isLoading: isLoading || false,
   };
 }

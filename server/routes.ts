@@ -116,7 +116,7 @@ export function registerRoutes(app: Express) {
 
   app.put("/api/users/settings", async (req, res) => {
     const { username, targetDays } = req.body;
-    const userId = req.session?.user?.id;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({ message: "認証が必要です" });
@@ -130,6 +130,24 @@ export function registerRoutes(app: Express) {
       res.json({ ok: true });
     } catch (error) {
       res.status(500).json({ message: "設定の更新に失敗しました" });
+    }
+  });
+
+  app.delete("/api/users/delete", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "認証が必要です" });
+    }
+
+    try {
+      await db.delete(users).where(eq(users.id, req.user.id));
+      req.logout((err) => {
+        if (err) {
+          return res.status(500).json({ message: "ログアウトに失敗しました" });
+        }
+        res.json({ ok: true });
+      });
+    } catch (error) {
+      res.status(500).json({ message: "アカウントの削除に失敗しました" });
     }
   });
 }
