@@ -3,6 +3,7 @@ import { Sidebar } from "../components/Sidebar";
 import { Timer } from "../components/Timer";
 import { Calendar } from "../components/Calendar";
 import { Statistics } from "../components/Statistics";
+import { Settings } from "../components/Settings";
 
 export default function HomePage() {
   const [view, setView] = useState<"home" | "monthly" | "settings">("home");
