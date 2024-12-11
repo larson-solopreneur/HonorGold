@@ -20,7 +20,9 @@ export const timerSessions = pgTable("timer_sessions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).extend({
+export const insertUserSchema = createInsertSchema(users, {
+  targetDays: z.number().optional(),
+}).extend({
   email: z.string().email({
     message: "メールアドレスの形式が正しくありません。",
   }),
