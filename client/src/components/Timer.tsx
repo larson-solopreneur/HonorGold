@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { useTimer } from "../hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
@@ -8,76 +9,25 @@ export function Timer() {
   const { startTimer, endTimer, activeSession } = useTimer();
   const { toast } = useToast();
   const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [lastStartTime, setLastStartTime] = useState<string | null>(null);
+  const [lastFailureTime, setLastFailureTime] = useState<string | null>(null);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    // ローカルストレージから最終アクション時間を取得
+    setLastStartTime(localStorage.getItem('lastStartTime'));
+    setLastFailureTime(localStorage.getItem('lastFailureTime'));
+  }, []);
+
+  const isButtonDisabled = (lastActionTime: string | null) => {
+    if (!lastActionTime) return false;
     
-    // アプリケーション起動時にローカルストレージから状態を復元
-    const initializeFromStorage = () => {
-      try {
-        const storedStartTime = localStorage.getItem('timerStartTime');
-        const storedSessionId = localStorage.getItem('timerSessionId');
-        const storedIsAbstinence = localStorage.getItem('timerIsAbstinence');
-        const storedElapsedTime = localStorage.getItem('timerElapsedTime');
-
-        // ローカルストレージに保存された状態があり、かつアクティブセッションがある場合
-        if (storedStartTime && storedSessionId && activeSession?.id.toString() === storedSessionId) {
-          const startTime = new Date(storedStartTime);
-          if (storedElapsedTime) {
-            setElapsedTime(parseInt(storedElapsedTime, 10));
-          }
-          return startTime;
-        }
-      } catch (error) {
-        console.error("状態復元エラー:", error);
-        clearTimerStorage();
-      }
-      return null;
-    };
-
-    if (activeSession?.startTime && !activeSession.endTime) {
-      try {
-        const storedStartTime = initializeFromStorage();
-        const startTime = storedStartTime || new Date(activeSession.startTime);
-
-        const updateElapsedTime = () => {
-          const now = new Date();
-          const elapsed = now.getTime() - startTime.getTime();
-          setElapsedTime(Math.max(0, elapsed));
-          
-          // 状態をローカルストレージに保存
-          localStorage.setItem('timerElapsedTime', elapsed.toString());
-          localStorage.setItem('timerStartTime', startTime.toISOString());
-          localStorage.setItem('timerSessionId', activeSession.id.toString());
-          localStorage.setItem('timerIsAbstinence', String(activeSession.isAbstinence));
-        };
-
-        updateElapsedTime();
-        intervalId = setInterval(updateElapsedTime, 1000);
-
-      } catch (error) {
-        console.error("タイマー更新エラー:", error);
-        setElapsedTime(0);
-        clearTimerStorage();
-      }
-    } else {
-      setElapsedTime(0);
-      clearTimerStorage();
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [activeSession]);
-
-  // タイマーストレージをクリアする関数
-  const clearTimerStorage = () => {
-    localStorage.removeItem('timerStartTime');
-    localStorage.removeItem('timerSessionId');
-    localStorage.removeItem('timerIsAbstinence');
-    localStorage.removeItem('timerElapsedTime');
+    const lastAction = new Date(lastActionTime);
+    const now = new Date();
+    const tomorrow4am = new Date(lastAction);
+    tomorrow4am.setDate(tomorrow4am.getDate() + 1);
+    tomorrow4am.setHours(4, 0, 0, 0);
+    
+    return now < tomorrow4am;
   };
 
   const formatElapsedTime = (ms: number) => {
@@ -93,6 +43,9 @@ export function Timer() {
   const handleStart = async () => {
     try {
       await startTimer(true);
+      const now = new Date().toISOString();
+      localStorage.setItem('lastStartTime', now);
+      setLastStartTime(now);
       toast({
         title: "継続モード開始",
         description: "タイマーを開始しました。頑張りましょう！",
@@ -110,6 +63,9 @@ export function Timer() {
     try {
       if (activeSession && !activeSession.endTime) {
         await endTimer();
+        const now = new Date().toISOString();
+        localStorage.setItem('lastFailureTime', now);
+        setLastFailureTime(now);
         toast({
           title: "失敗を記録",
           description: "記録を保存しました。また頑張りましょう。",
@@ -124,7 +80,17 @@ export function Timer() {
     }
   };
 
-  const isTimerActive = Boolean(activeSession?.startTime && !activeSession?.endTime);
+  const getStatus = () => {
+    if (activeSession?.startTime && !activeSession?.endTime) {
+      return "継続中";
+    }
+    if (lastFailureTime && new Date(lastFailureTime).toDateString() === new Date().toDateString()) {
+      return "失敗";
+    }
+    return "未開始";
+  };
+
+  const status = getStatus();
 
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm">
@@ -136,6 +102,9 @@ export function Timer() {
         <p className="text-4xl font-mono mb-2">
           {formatElapsedTime(elapsedTime)}
         </p>
+        <p className="text-lg font-semibold">
+          ステータス: {status}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -143,7 +112,7 @@ export function Timer() {
           size="lg"
           className="h-24"
           onClick={handleStart}
-          disabled={isTimerActive}
+          disabled={isButtonDisabled(lastStartTime) || status === "継続中"}
         >
           <ShieldCheck className="h-6 w-6 mr-2" />
           継続を開始
@@ -154,6 +123,7 @@ export function Timer() {
           variant="destructive"
           className="h-24"
           onClick={handleFailure}
+          disabled={isButtonDisabled(lastFailureTime)}
         >
           <AlertTriangle className="h-6 w-6 mr-2" />
           失敗を記録
