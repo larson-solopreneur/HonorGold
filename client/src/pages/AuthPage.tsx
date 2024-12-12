@@ -1,6 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type InsertUser } from "@db/schema";
+import { 
+  insertUserSchema, 
+  loginSchema,
+  type InsertUser,
+  type LoginUser,
+} from "@db/schema";
 import {
   Form,
   FormControl,
@@ -15,39 +20,72 @@ import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
+type FormData = {
+  email: string;
+  password: string;
+  username?: string;
+};
+
 export default function AuthPage() {
   const { login, register } = useUser();
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
 
-  const form = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
+  const form = useForm<FormData>({
+    resolver: zodResolver(isLogin ? loginSchema : insertUserSchema),
     defaultValues: {
       email: "",
-      username: "",
       password: "",
+      ...(isLogin ? {} : { username: "" }),
     },
   });
 
-  const onSubmit = async (data: InsertUser) => {
+  const onSubmit = async (data: FormData) => {
     try {
       form.clearErrors();
-      const result = await (isLogin ? login(data) : register(data));
-      if (!result.ok) {
-        if (result.message.includes("password")) {
-          form.setError("password", { message: result.message });
-        } else if (result.message.includes("email")) {
-          form.setError("email", { message: result.message });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "エラー",
-            description: result.message,
-          });
+      if (isLogin) {
+        const loginData = {
+          email: data.email,
+          password: data.password
+        };
+        const result = await login(loginData);
+        if (!result.ok) {
+          if (result.message.includes("password")) {
+            form.setError("password", { message: result.message });
+          } else if (result.message.includes("email")) {
+            form.setError("email", { message: result.message });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "エラー",
+              description: result.message,
+            });
+          }
+          return;
         }
-        return;
+      } else {
+        const registerData = {
+          email: data.email,
+          password: data.password,
+          username: data.username!
+        };
+        const result = await register(registerData);
+        if (!result.ok) {
+          if (result.message.includes("password")) {
+            form.setError("password", { message: result.message });
+          } else if (result.message.includes("email")) {
+            form.setError("email", { message: result.message });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "エラー",
+              description: result.message,
+            });
+          }
+          return;
+        }
       }
-      
+
       toast({
         title: "成功",
         description: isLogin ? "ログインしました！" : "アカウントが作成されました！",

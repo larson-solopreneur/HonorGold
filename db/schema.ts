@@ -35,8 +35,19 @@ export const insertUserSchema = createInsertSchema(users, {
     message: "パスワードは8文字以上である必要があります。",
   }),
 });
+
+export const loginSchema = z.object({
+  email: z.string().email({
+    message: "メールアドレスの形式が正しくありません。",
+  }),
+  password: z.string().min(8, {
+    message: "パスワードは8文字以上である必要があります。",
+  }),
+});
+
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type LoginUser = z.infer<typeof loginSchema>;
 export type User = z.infer<typeof selectUserSchema>;
 
 export const insertTimerSessionSchema = createInsertSchema(timerSessions);
