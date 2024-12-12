@@ -119,7 +119,6 @@ export default function AuthPage() {
             <Button 
               type="submit" 
               className="w-full"
-              disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
                 <span className="flex items-center gap-2">
