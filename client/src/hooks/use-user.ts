@@ -100,12 +100,14 @@ export function useUser() {
       
       if (!response.ok) {
         const error = await response.json();
+        console.error('User settings update failed:', error);
         return { ok: false, message: error.message };
       }
 
       await queryClient.invalidateQueries({ queryKey: ["user"] });
       return { ok: true };
     } catch (error) {
+      console.error('Unexpected error during settings update:', error);
       return { ok: false, message: "設定の更新に失敗しました" };
     }
   };
@@ -119,6 +121,7 @@ export function useUser() {
       
       if (!response.ok) {
         const error = await response.json();
+        console.error('User settings update failed:', error);
         return { ok: false, message: error.message };
       }
 
