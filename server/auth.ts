@@ -3,31 +3,10 @@ import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
 import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
-
-// Setup crypto utilities
-const scryptAsync = promisify(scrypt);
-const crypto = {
-  hash: async (password: string) => {
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-    return `${buf.toString("hex")}.${salt}`;
-  },
-  compare: async (suppliedPassword: string, storedPassword: string) => {
-    const [hashedPassword, salt] = storedPassword.split(".");
-    const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
-    const suppliedPasswordBuf = (await scryptAsync(
-      suppliedPassword,
-      salt,
-      64
-    )) as Buffer;
-    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
-  },
-};
+import { authUtils } from "./utils/auth";
 
 // Extend Express User type with our schema
 declare global {
@@ -90,7 +69,7 @@ export function setupAuth(app: Express) {
             .where(eq(users.email, email))
             .limit(1);
 
-          if (!user || !(await crypto.compare(password, user.password))) {
+          if (!user || !(await authUtils.compare(password, user.password))) {
             return done(null, false, {
               message: "メールアドレスまたはパスワードが正しくありません。",
             });
@@ -147,7 +126,7 @@ export function setupAuth(app: Express) {
       }
 
       // Create new user with hashed password
-      const hashedPassword = await crypto.hash(password);
+      const hashedPassword = await authUtils.hash(password);
       const [newUser] = await db
         .insert(users)
         .values({
