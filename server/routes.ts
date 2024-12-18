@@ -1,153 +1,125 @@
-import { type Express } from "express";
-import { setupAuth } from "./auth";
+import { Router, Express } from "express";
 import { db } from "../db";
-import { timerSessions } from "@db/schema";
-import { eq, and, isNull, desc } from "drizzle-orm";
-// Assuming 'users' table exists and has 'id', 'username', and 'targetDays' columns.  Add import if necessary.
-import { users } from "../db/schema"; // Add this import if users schema is not already imported
+import { timerSessions } from "../db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 
+const router = Router();
 
-export function registerRoutes(app: Express) {
-  setupAuth(app);
+// タイマーセッションの開始
+router.post("/start", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "認証が必要です" });
+  }
 
-  // Start a new timer session
-  app.post("/api/timer/start", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("認証されていません");
-    }
+  const { isAbstinence } = req.body;
+  
+  try {
+    const [session] = await db.insert(timerSessions)
+      .values({
+        userId,
+        startTime: new Date(),
+        isAbstinence
+      })
+      .returning();
 
-    const { isAbstinence } = req.body;
-    
-    try {
-      const [session] = await db
-        .insert(timerSessions)
-        .values({
-          userId: req.user.id,
-          startTime: new Date(),
-          isAbstinence,
-        })
-        .returning();
+    res.json(session);
+  } catch (error) {
+    console.error("Error starting timer:", error);
+    res.status(500).json({ error: "タイマーの開始に失敗しました" });
+  }
+});
 
-      res.json(session);
-    } catch (error) {
-      console.error("タイマー開始エラー:", req.user.id, error);
-      res.status(500).send("タイマーの開始に失敗しました");
-    }
-  });
+// アクティブなタイマーセッションの終了
+router.post("/end", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "認証が必要です" });
+  }
 
-  // End current timer session
-  app.post("/api/timer/end", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("認証されていません");
-    }
-
-    try {
-      const [session] = await db
-        .update(timerSessions)
-        .set({ endTime: new Date() })
-        .where(
-          and(
-            eq(timerSessions.userId, req.user.id),
-            isNull(timerSessions.endTime)
-          )
+  try {
+    const [activeSession] = await db
+      .select()
+      .from(timerSessions)
+      .where(
+        and(
+          eq(timerSessions.userId, userId),
+          sql`${timerSessions.endTime} IS NULL`
         )
-        .returning();
+      )
+      .limit(1);
 
-      if (!session) {
-        return res.status(404).send("アクティブなセッションが見つかりません");
-      }
-
-      res.json(session);
-    } catch (error) {
-      console.error("タイマー終了エラー:", req.user.id, error);
-      res.status(500).send("タイマーの終了に失敗しました");
-    }
-  });
-
-  // Get user's timer history
-  app.get("/api/timer/history", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("認証されていません");
+    if (!activeSession) {
+      return res.status(404).json({ error: "アクティブなセッションが見つかりません" });
     }
 
-    try {
-      const sessions = await db
-        .select()
-        .from(timerSessions)
-        .where(eq(timerSessions.userId, req.user.id))
-        .orderBy(desc(timerSessions.startTime));
+    const [updatedSession] = await db
+      .update(timerSessions)
+      .set({ endTime: new Date() })
+      .where(eq(timerSessions.id, activeSession.id))
+      .returning();
 
-      res.json(sessions);
-    } catch (error) {
-      console.error("履歴取得エラー:", req.user.id, error);
-      res.status(500).send("タイマー履歴の取得に失敗しました");
-    }
-  });
+    res.json(updatedSession);
+  } catch (error) {
+    console.error("Error ending timer:", error);
+    res.status(500).json({ error: "タイマーの終了に失敗しました" });
+  }
+});
 
-  // Get active timer session
-  app.get("/api/timer/active", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("認証されていません");
-    }
+// アクティブなタイマーセッションの取得
+router.get("/active", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "認証が必要です" });
+  }
 
-    try {
-      const [activeSession] = await db
-        .select()
-        .from(timerSessions)
-        .where(
-          and(
-            eq(timerSessions.userId, req.user.id),
-            isNull(timerSessions.endTime)
-          )
+  try {
+    const [activeSession] = await db
+      .select()
+      .from(timerSessions)
+      .where(
+        and(
+          eq(timerSessions.userId, userId),
+          sql`${timerSessions.endTime} IS NULL`
         )
-        .orderBy(desc(timerSessions.startTime))
-        .limit(1);
+      )
+      .limit(1);
 
-      res.json(activeSession || null);
-    } catch (error) {
-      console.error("アクティブセッション取得エラー:", req.user.id, error);
-      res.status(500).send("アクティブなタイマーの取得に失敗しました");
-    }
-  });
-
-  app.post("/api/logout", async (req, res) => {
-    res.json({ ok: true });
-  });
-
-  app.put("/api/users/settings", async (req, res) => {
-    const { username, targetDays } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "認証が必要です" });
+    if (!activeSession) {
+      return res.json(null);
     }
 
-    try {
-      await db.update(users)
-        .set({ username, targetDays })
-        .where(eq(users.id, userId));
-      
-      res.json({ ok: true });
-    } catch (error) {
-      res.status(500).json({ message: "設定の更新に失敗しました" });
-    }
-  });
+    res.json(activeSession);
+  } catch (error) {
+    console.error("Error fetching active timer:", error);
+    res.status(500).json({ error: "アクティブなタイマーの取得に失敗しました" });
+  }
+});
 
-  app.delete("/api/users/delete", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "認証が必要です" });
-    }
+// タイマーセッション履歴の取得
+router.get("/history", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "認証が必要です" });
+  }
 
-    try {
-      await db.delete(users).where(eq(users.id, req.user.id));
-      req.logout((err) => {
-        if (err) {
-          return res.status(500).json({ message: "ログアウトに失敗しました" });
-        }
-        res.json({ ok: true });
-      });
-    } catch (error) {
-      res.status(500).json({ message: "アカウントの削除に失敗しました" });
-    }
-  });
-}
+  try {
+    const history = await db
+      .select()
+      .from(timerSessions)
+      .where(eq(timerSessions.userId, userId))
+      .orderBy(desc(timerSessions.startTime))
+      .limit(100);
+
+    res.json(history);
+  } catch (error) {
+    console.error("Error fetching timer history:", error);
+    res.status(500).json({ error: "タイマー履歴の取得に失敗しました" });
+  }
+});
+
+export const registerRoutes = (app: Express) => {
+  app.use('/api/timer', router);
+};
+
+export default router;
