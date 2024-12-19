@@ -1,0 +1,66 @@
+{
+  "common": {
+    "buttons": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "labels": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "messages": {
+      "loading": "Loading...",
+      "error": "An error occurred",
+      "success": "Operation successful"
+    }
+  },
+  "navigation": {
+    "home": "Home",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logout": "Logout"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "title": "Language Settings",
+      "select": "Select Language",
+      "english": "English",
+      "japanese": "Japanese"
+    },
+    "form": {
+      "username": "Username",
+      "targetDays": "Target Days",
+      "targetDaysPlaceholder": "Enter target days",
+      "updating": "Updating..."
+    },
+    "dangerZone": {
+      "title": "Danger Zone",
+      "deleteAccount": "Delete Account",
+      "confirmDelete": "Are you sure you want to delete your account?",
+      "deleteWarning": "This action cannot be undone. All your data will be permanently deleted.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "updateSuccess": "Settings updated successfully",
+      "updateError": "Failed to update settings",
+      "deleteError": "Failed to delete account"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "emailPlaceholder": "Enter your email",
+      "passwordPlaceholder": "Enter your password",
+      "submitButton": "Sign In"
+    },
+    "errors": {
+      "invalidEmail": "Invalid email address",
+      "invalidPassword": "Password must be at least 8 characters"
+    }
+  }
+}
