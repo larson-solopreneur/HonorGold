@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from "./LanguageSelector";
 import {
   Form,
   FormControl,
@@ -35,6 +37,7 @@ const settingsSchema = z.object({
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export function Settings() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user, updateUser, deleteAccount } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -103,7 +106,7 @@ export function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-4">設定</h2>
+        <h2 className="text-2xl font-bold mb-4">{t('settings.title')}</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -111,7 +114,7 @@ export function Settings() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ユーザー名</FormLabel>
+                  <FormLabel>{t('common.labels.name')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -124,7 +127,7 @@ export function Settings() {
               name="targetDays"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>目標禁欲日数</FormLabel>
+                  <FormLabel>{t('settings.targetDays')}</FormLabel>
                   <FormControl>
                     <Input type="number" min="1" {...field} />
                   </FormControl>
@@ -133,32 +136,37 @@ export function Settings() {
               )}
             />
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "更新中..." : "更新"}
+              {isLoading ? t('common.messages.loading') : t('common.buttons.save')}
             </Button>
           </form>
         </Form>
       </div>
 
       <div className="pt-6 border-t">
-        <h3 className="text-lg font-semibold text-destructive mb-4">危険な操作</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('settings.language.title')}</h3>
+        <LanguageSelector />
+      </div>
+
+      <div className="pt-6 border-t">
+        <h3 className="text-lg font-semibold text-destructive mb-4">{t('settings.dangerZone.title')}</h3>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive">アカウントを削除</Button>
+            <Button variant="destructive">{t('settings.dangerZone.deleteAccount')}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>本当にアカウントを削除しますか？</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.dangerZone.confirmDelete')}</AlertDialogTitle>
               <AlertDialogDescription>
-                この操作は取り消すことができません。すべてのデータが完全に削除されます。
+                {t('settings.dangerZone.deleteWarning')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>キャンセル</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteAccount}
                 className="bg-destructive text-destructive-foreground"
               >
-                削除する
+                {t('common.buttons.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
