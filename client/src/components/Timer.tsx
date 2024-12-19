@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useTimer } from "../hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
@@ -18,15 +17,47 @@ export function Timer() {
     setLastFailureTime(localStorage.getItem('lastFailureTime'));
   }, []);
 
-  const isButtonDisabled = (lastActionTime: string | null) => {
+  // タイマー更新のための useEffect
+  useEffect(() => {
+    let intervalId: number;
+
+    if (activeSession?.startTime && !activeSession?.endTime) {
+      intervalId = window.setInterval(() => {
+        const start = new Date(activeSession.startTime).getTime();
+        const now = new Date().getTime();
+        setElapsedTime(now - start);
+      }, 1000);
+
+      // 初期値を設定
+      const start = new Date(activeSession.startTime).getTime();
+      const now = new Date().getTime();
+      setElapsedTime(now - start);
+    } else {
+      setElapsedTime(0);
+    }
+
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [activeSession]);
+
+  const isButtonDisabled = (lastActionTime: string | null, buttonType: 'start' | 'failure') => {
+    // 失敗ボタンの場合は、継続中の時のみ押せるようにする
+    if (buttonType === 'failure') {
+      return status !== "継続中";
+    }
+
+    // 開始ボタンの場合は従来の時間チェックを行う
     if (!lastActionTime) return false;
-    
+
     const lastAction = new Date(lastActionTime);
     const now = new Date();
     const tomorrow4am = new Date(lastAction);
     tomorrow4am.setDate(tomorrow4am.getDate() + 1);
     tomorrow4am.setHours(4, 0, 0, 0);
-    
+
     return now < tomorrow4am;
   };
 
@@ -61,11 +92,14 @@ export function Timer() {
 
   const handleFailure = async () => {
     try {
-      if (activeSession && !activeSession.endTime) {
+      if (activeSession?.startTime && !activeSession?.endTime) {
         await endTimer();
         const now = new Date().toISOString();
         localStorage.setItem('lastFailureTime', now);
         setLastFailureTime(now);
+        // 継続開始時間もクリア
+        localStorage.removeItem('lastStartTime');
+        setLastStartTime(null);
         toast({
           title: "失敗を記録",
           description: "記録を保存しました。また頑張りましょう。",
@@ -92,6 +126,16 @@ export function Timer() {
 
   const status = getStatus();
 
+  // デバッグ用のuseEffect
+  useEffect(() => {
+    console.log({
+      status,
+      lastFailureTime,
+      isDisabled: isButtonDisabled(lastFailureTime, 'failure'),
+      activeSession
+    });
+  }, [status, lastFailureTime, activeSession]);
+
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm">
       <div className="flex flex-col items-center mb-6">
@@ -112,7 +156,7 @@ export function Timer() {
           size="lg"
           className="h-24"
           onClick={handleStart}
-          disabled={isButtonDisabled(lastStartTime) || status === "継続中"}
+          disabled={isButtonDisabled(lastStartTime, 'start') || status === "継続中"}
         >
           <ShieldCheck className="h-6 w-6 mr-2" />
           継続を開始
@@ -123,7 +167,7 @@ export function Timer() {
           variant="destructive"
           className="h-24"
           onClick={handleFailure}
-          disabled={isButtonDisabled(lastFailureTime)}
+          disabled={isButtonDisabled(lastFailureTime, 'failure')}
         >
           <AlertTriangle className="h-6 w-6 mr-2" />
           失敗を記録
